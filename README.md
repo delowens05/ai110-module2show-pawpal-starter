@@ -54,4 +54,18 @@ New PawPal+ Features!:
 - The scheduler knows your preferences (e.g., "I prefer walks in the morning"). It ranks tasks by urgency first, then fits them into the times you prefer.
 - The plan explains its choices when it comes to fitting and scheduling task.
 
+## Testing PawPal+
+
+Run the test suite with:
+
+python -m pytest
+
+Testing covers:
+
+- Ensures tasks are ranked by priority and owner preferences. Tests verify correct ordering when priorities are tied, missing preferences default to medium weight, and empty task lists don't crash.
+
+- Confirms that marking a daily or weekly task as complete automatically creates the next occurrence with the correct due date. Tests verify non-recurring tasks return None, recurring tasks without an initial due date calculate correctly, and all task properties are preserved across occurrences.
+
+- Verifies the scheduler detects overlapping task times and properly flags scheduling conflicts. Tests ensure overlapping tasks are flagged, adjacent non-overlapping tasks are not flagged, partial overlaps are caught, and single-task schedules have no conflicts.
+
 
