@@ -2,15 +2,22 @@
 
 ## 1. System Design
 
+- A user should be able to enter basic pet info
+- A user should be able to look at a generated schedule/plan 
+- A user should be able to consider constraints like time and
 **a. Initial design**
 
-- Briefly describe your initial UML design.
-- What classes did you include, and what responsibilities did you assign to each?
+The initial UML design was a class diagram created using Mermaid to model the pet care planning system. It used object-oriented principles, and had data classes (Pet, Owner, Task) and a logic class (Schedule).
+
+Classes:
+- Pet: Represents the pet with attributes like name, species, age, and special needs. Responsibilities include providing pet information and checking for specific needs that might affect task selection.
+- Owner: Represents the pet owner with availability time slots and preferences. Responsibilities include managing owned pets and providing preference weights for task prioritization.
+- Task: Represents individual care tasks with details like duration, priority, and preferred time. Responsibilities include determining if a task is due and providing descriptions.
+- Schedule: Combines planning and scheduling logic. Responsibilities include generating a daily plan based on owner/pet/tasks, sorting tasks by priority/preferences, fitting them into available time slots, and explaining the plan with reasons.
 
 **b. Design changes**
 
-- Did your design change during implementation?
-- If yes, describe at least one change and why you made it.
+Yes, the design changed during implementation. The "Schedule.generate_plan" method was changed from an instance method to a classmethod to act as something  creating "Schedule" instances. This improved the skeleton by making it clearer and it now produces a new plan object without requiring an existing schedule.
 
 ---
 
