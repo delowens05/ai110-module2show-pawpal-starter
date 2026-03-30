@@ -68,4 +68,14 @@ Testing covers:
 
 - Verifies the scheduler detects overlapping task times and properly flags scheduling conflicts. Tests ensure overlapping tasks are flagged, adjacent non-overlapping tasks are not flagged, partial overlaps are caught, and single-task schedules have no conflicts.
 
+## Features
+- Sorts care activities using a weighted algorithm that balances base priority levels with owner-specific category preferences.
+- Scheduling that automatically matches due tasks into available time windows based on duration and availability
+- Scans the generated schedule for overlapping time blocks and issues warnings to prevent double-booking care sessions.
+- Checks foe "Daily" and "Weekly" task cycles by automatically calculating and scheduling the next occurrence into the system upon completion.
 
+## Demo
+
+<a href="/course_images/ai110/screenshot.png" target="_blank">
+  <img src="/course_images/ai110/screenshot.png" alt="Screenshot of output">
+</a>
