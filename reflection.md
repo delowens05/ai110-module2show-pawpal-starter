@@ -25,13 +25,11 @@ Yes, the design changed during implementation. The "Schedule.generate_plan" meth
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+The scheduler considers three main constraints: (1) available time slots (morning, afternoon, evening windows), (2) task priority (1-5 scale where 5 is highest), and (3) owner preferences for task categories (high/medium/low). The scheduler weights priority highest, then owner preference, then fits tasks into the earliest available slot. This ranking was chosen because urgent tasks (high priority) should take precedence, but owner preferences (e.g., "I prefer walking in the morning") should guide placement when multiple high-priority slots exist.
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+One key tradeoff is using "first-fit" scheduling instead of "best-fit" bin-packing. First-fit places each task in the first time slot where it fits, which is fast (O(n)) but may leave fragmented unused time. Best-fit would minimize gaps but requires O(n²) comparisons. For a daily pet schedule with typically 3-10 tasks, first-fit is reasonable because schedules are small enough that the speed gain outweighs wasted time. Additionally, the non-blocking conflict detection (warnings instead of hard failures) trades scheduling completeness for user flexibility—conflicts are flagged but don't prevent plan generation, allowing owners to review and manually adjust rather than getting blocked.
 
 ---
 

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import date, timedelta
 from typing import List, Dict, Optional
 
 
@@ -37,6 +38,7 @@ class Owner:
     pets: List[Pet] = None
 
     def __post_init__(self):
+        """Initialize default pets list after dataclass creation."""
         if self.pets is None:
             self.pets = []
 
@@ -59,6 +61,18 @@ class Owner:
             all_tasks.extend(pet.tasks)
         return all_tasks
 
+    def filter_tasks(self, completed: Optional[bool] = None, pet_name: Optional[str] = None) -> List['Task']:
+        """Return tasks filtered by completion status and/or pet name."""
+        filtered = []
+        for pet in self.pets:
+            if pet_name is not None and pet.name != pet_name:
+                continue
+            for task in pet.tasks:
+                if completed is not None and task.completed != completed:
+                    continue
+                filtered.append(task)
+        return filtered
+
 
 @dataclass
 class Task:
@@ -66,23 +80,51 @@ class Task:
     category: str
     duration: int
     priority: int
-    frequency: str = "daily"
+    frequency: str = "daily"  # one of "daily", "weekly", "none"
     preferred_time: str = "anytime"
     pet_specific: bool = False
     completed: bool = False
+    due_date: Optional[date] = None
 
     def is_due_today(self) -> bool:
         """Return True when this task should be done today."""
-        # For simplicity, assume daily tasks are always due
+        if self.due_date:
+            return self.due_date == date.today()
         return self.frequency == "daily"
 
     def get_description(self) -> str:
         """Return a brief string describing this task."""
-        return f"{self.name} ({self.category}, {self.duration} min, priority {self.priority})"
+        due = f", due {self.due_date.isoformat()}" if self.due_date else ""
+        return f"{self.name} ({self.category}, {self.duration} min, priority {self.priority}{due})"
 
-    def mark_complete(self):
-        """Mark this task as completed."""
+    def mark_complete(self) -> Optional['Task']:
+        """Mark this task complete and create the next occurrence for daily/weekly recurrence."""
         self.completed = True
+
+        if self.frequency not in ("daily", "weekly"):
+            return None
+
+        if self.due_date is None:
+            next_date = date.today()
+        else:
+            next_date = self.due_date
+
+        if self.frequency == "daily":
+            next_date = next_date + timedelta(days=1)
+        elif self.frequency == "weekly":
+            next_date = next_date + timedelta(weeks=1)
+
+        return Task(
+            name=self.name,
+            category=self.category,
+            duration=self.duration,
+            priority=self.priority,
+            frequency=self.frequency,
+            preferred_time=self.preferred_time,
+            pet_specific=self.pet_specific,
+            completed=False,
+            due_date=next_date,
+        )
 
 
 class Schedule:
@@ -132,12 +174,27 @@ class Schedule:
             schedule.add_task(entry["task"], entry["start_time"], entry["reason"])
         return schedule
 
+    @classmethod
+    def generate_plan_with_warnings(cls, date: str, owner: Owner) -> tuple['Schedule', List[str]]:
+        """Generate a schedule and return it with a list of warning messages (non-blocking)."""
+        schedule = cls.generate_plan(date, owner)
+        warnings = []
+
+        conflicts = schedule.detect_scheduling_conflicts()
+        for c in conflicts:
+            warning_msg = f"⚠️  '{c['task1']}' ({c['pet1']}) overlaps '{c['task2']}' ({c['pet2']}) at {c['overlap']}"
+            warnings.append(warning_msg)
+
+        return schedule, warnings
+
+
     def sort_tasks(self, tasks: List['Task'], owner_preferences: Dict[str, str]) -> List['Task']:
         """Sort tasks by priority and owner preferences."""
         def sort_key(task):
             pref_weight = self.owner.get_preference_weight(task.category) if self.owner else 2
             return (-task.priority, -pref_weight)  # Higher priority and pref first
         return sorted(tasks, key=sort_key)
+    
 
     def fit_into_schedule(self, sorted_tasks: List['Task'], available_slots: List[tuple[int, int]]) -> List[Dict]:
         """Fit sorted tasks into available time slots."""
@@ -153,3 +210,35 @@ class Schedule:
                     scheduled.append({"task": task, "start_time": start_time, "reason": reason})
                     break  # Assign to first fitting slot
         return scheduled
+
+    def _time_to_minutes(self, time_str: str) -> int:
+        """Convert HH:MM string to total minutes since midnight."""
+        parts = time_str.split(":")
+        return int(parts[0]) * 60 + int(parts[1])
+
+    def detect_scheduling_conflicts(self) -> List[Dict]:
+        """Detect tasks scheduled at overlapping times and return list of conflicts."""
+        conflicts = []
+        tasks = self.scheduled_tasks
+        for i, entry1 in enumerate(tasks):
+            for entry2 in tasks[i + 1 :]:
+                start1 = self._time_to_minutes(entry1["start_time"])
+                start2 = self._time_to_minutes(entry2["start_time"])
+                end1 = self._time_to_minutes(entry1["end_time"])
+                end2 = self._time_to_minutes(entry2["end_time"])
+
+                # Check for overlap: start of one is before end of other
+                if (start1 < end2) and (start2 < end1):
+                    pet1_name = next((p.name for p in self.owner.pets if entry1["task"] in p.tasks), "unknown")
+                    pet2_name = next((p.name for p in self.owner.pets if entry2["task"] in p.tasks), "unknown")
+                    conflicts.append(
+                        {
+                            "task1": entry1["task"].name,
+                            "pet1": pet1_name,
+                            "task2": entry2["task"].name,
+                            "pet2": pet2_name,
+                            "overlap": f"{entry1['start_time']}-{min(end1, end2) // 60}:{min(end1, end2) % 60:02d}",
+                        }
+                    )
+        return conflicts
+
